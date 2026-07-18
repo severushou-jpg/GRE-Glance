@@ -2,6 +2,12 @@
 
 All notable changes to GRE Glance are documented here.
 
+## 1.1.3 — 2026-07-18
+
+- Use one invariant primary-text layout for every Widget row, regardless of content length.
+- Restrict adaptive fallback behavior to the synonym area so long words never switch font branches.
+- Adopt styled `Text` interpolation for macOS 26 compatibility.
+
 ## 1.1.2 — 2026-07-18
 
 - Render the word, part of speech, and Chinese meaning as one styled text run so every Widget row uses identical font metrics.

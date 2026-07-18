@@ -162,14 +162,24 @@ private struct WidgetWordRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            ViewThatFits(in: .horizontal) {
-                firstLine(synonymCount: min(synonymLimit, 3), preservesPrimaryWidth: true)
-                if synonymLimit > 1 {
-                    firstLine(synonymCount: min(synonymLimit, 2), preservesPrimaryWidth: true)
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                primaryText
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .layoutPriority(2)
+
+                Spacer(minLength: 3)
+
+                ViewThatFits(in: .horizontal) {
+                    synonymText(count: min(synonymLimit, 3))
+                    if synonymLimit > 1 {
+                        synonymText(count: min(synonymLimit, 2))
+                    }
+                    synonymText(count: 1)
+                    Color.clear.frame(width: 0, height: 1)
                 }
-                firstLine(synonymCount: 1, preservesPrimaryWidth: true)
-                firstLine(synonymCount: nil, preservesPrimaryWidth: true)
-                firstLine(synonymCount: nil, preservesPrimaryWidth: false)
+
+                replaceButton
             }
 
             Text(word.exampleSentence)
@@ -182,35 +192,10 @@ private struct WidgetWordRow: View {
         .accessibilityElement(children: .contain)
     }
 
-    private func firstLine(synonymCount: Int?, preservesPrimaryWidth: Bool) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 5) {
-            primaryText
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .fixedSize(horizontal: preservesPrimaryWidth, vertical: false)
-                .layoutPriority(3)
-
-            Spacer(minLength: 3)
-
-            if let synonymCount {
-                synonymText(count: synonymCount)
-            }
-
-            replaceButton
-        }
-    }
-
-    /// A single text run prevents SwiftUI from compressing the word, part of
-    /// speech, and meaning as independent HStack children. Every row therefore
-    /// uses identical font metrics, even when it falls back to truncation.
+    /// The primary content is rendered exactly once. Adaptive layout is limited
+    /// to the synonym view, so long words cannot select a different font branch.
     private var primaryText: Text {
-        Text(word.word)
-            .font(.system(size: textSize.wordFontSize, weight: .semibold))
-        + Text(" \(word.partOfSpeech) ")
-            .font(.system(size: 10.5, weight: .medium))
-            .foregroundColor(.secondary)
-        + Text(word.chineseMeaning)
-            .font(.system(size: textSize.meaningFontSize, weight: .medium))
+        Text("\(Text(word.word).font(.system(size: textSize.wordFontSize, weight: .semibold))) \(Text(word.partOfSpeech).font(.system(size: 10.5, weight: .medium)).foregroundColor(.secondary)) \(Text(word.chineseMeaning).font(.system(size: textSize.meaningFontSize, weight: .medium)))")
     }
 
     private var replaceButton: some View {
