@@ -2,6 +2,12 @@
 
 All notable changes to GRE Glance are documented here.
 
+## 1.1.1 — 2026-07-18
+
+- Keep every Widget word and Chinese meaning at a consistent visual size.
+- Remove synonyms progressively before truncating primary text in narrow rows.
+- Migrate the previous oversized default to the balanced comfortable size without changing selected packs.
+
 ## 1.1.0 — 2026-07-18
 
 - Expand the offline vocabulary to 1,500 curated words in 15 selectable packs.

@@ -162,41 +162,14 @@ private struct WidgetWordRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text(word.word)
-                    .font(.system(size: textSize.wordFontSize, weight: .semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.74)
-                    .layoutPriority(3)
-
-                Text(word.partOfSpeech)
-                    .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(.secondary)
-
-                Text(word.chineseMeaning)
-                    .font(.system(size: textSize.meaningFontSize, weight: .medium))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-                    .layoutPriority(2)
-
-                Spacer(minLength: 3)
-
-                ViewThatFits(in: .horizontal) {
-                    synonymText(count: min(synonymLimit, 3))
-                    if synonymLimit > 1 { synonymText(count: min(synonymLimit, 2)) }
-                    synonymText(count: 1)
-                    Color.clear.frame(width: 0, height: 1)
+            ViewThatFits(in: .horizontal) {
+                firstLine(synonymCount: min(synonymLimit, 3), preservesPrimaryWidth: true)
+                if synonymLimit > 1 {
+                    firstLine(synonymCount: min(synonymLimit, 2), preservesPrimaryWidth: true)
                 }
-
-                Button(intent: ReplaceWordIntent(position: position, expectedWordID: word.id)) {
-                    Image(systemName: "checkmark.circle")
-                        .font(.system(size: 17, weight: .medium))
-                        .frame(width: 28, height: 26)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .accessibilityLabel("Replace \(word.word) with another word")
+                firstLine(synonymCount: 1, preservesPrimaryWidth: true)
+                firstLine(synonymCount: nil, preservesPrimaryWidth: true)
+                firstLine(synonymCount: nil, preservesPrimaryWidth: false)
             }
 
             Text(word.exampleSentence)
@@ -207,6 +180,48 @@ private struct WidgetWordRow: View {
         }
         .padding(.vertical, 5)
         .accessibilityElement(children: .contain)
+    }
+
+    private func firstLine(synonymCount: Int?, preservesPrimaryWidth: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Text(word.word)
+                .font(.system(size: textSize.wordFontSize, weight: .semibold))
+                .lineLimit(1)
+                .fixedSize(horizontal: preservesPrimaryWidth, vertical: false)
+                .layoutPriority(3)
+
+            Text(word.partOfSpeech)
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: true, vertical: false)
+
+            Text(word.chineseMeaning)
+                .font(.system(size: textSize.meaningFontSize, weight: .medium))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .fixedSize(horizontal: preservesPrimaryWidth, vertical: false)
+                .layoutPriority(2)
+
+            Spacer(minLength: 3)
+
+            if let synonymCount {
+                synonymText(count: synonymCount)
+            }
+
+            replaceButton
+        }
+    }
+
+    private var replaceButton: some View {
+        Button(intent: ReplaceWordIntent(position: position, expectedWordID: word.id)) {
+            Image(systemName: "checkmark.circle")
+                .font(.system(size: 17, weight: .medium))
+                .frame(width: 28, height: 26)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .accessibilityLabel("Replace \(word.word) with another word")
     }
 
     private func synonymText(count: Int) -> some View {
