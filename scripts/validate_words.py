@@ -12,6 +12,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PATH = ROOT / "Shared" / "Resources" / "ielts_word_packs.json"
+DEFAULT_ASSIGNMENTS = ROOT / "data" / "ielts_pack_assignments.json"
 VALID_PARTS_OF_SPEECH = {"adj.", "adv.", "n.", "v."}
 WORD_PATTERN = re.compile(r"^[a-z][a-z-]*$")
 REQUIRED_TEXT_FIELDS = ("id", "word", "partOfSpeech", "chineseMeaning", "exampleSentence")
@@ -48,6 +49,14 @@ def validate(packs: list[dict[str, Any]]) -> tuple[list[str], list[str], int]:
 
     words: list[dict[str, Any]] = []
     for expected_order, pack in enumerate(packs, start=1):
+        for field in ("name", "subtitle", "systemImage"):
+            value = pack.get(field)
+            if not isinstance(value, str) or not value.strip():
+                errors.append(f"{pack.get('id', expected_order)}: empty or invalid {field}")
+        if str(pack.get("name", "")).startswith("IELTS 进阶"):
+            errors.append(f"{pack.get('id', expected_order)}: generic numbered pack name is not allowed")
+        if str(pack.get("subtitle", "")).startswith("Words "):
+            errors.append(f"{pack.get('id', expected_order)}: numeric range subtitle is not allowed")
         pack_words = pack.get("words")
         if not isinstance(pack_words, list):
             errors.append(f"{pack.get('id', expected_order)}: words must be an array")
@@ -101,6 +110,30 @@ def validate(packs: list[dict[str, Any]]) -> tuple[list[str], list[str], int]:
     return errors, warnings, len(words)
 
 
+def validate_assignments(packs: list[dict[str, Any]], path: Path) -> list[str]:
+    errors: list[str] = []
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError) as error:
+        return [f"Unable to load pack assignment manifest: {error}"]
+
+    assignments = payload.get("packs") if isinstance(payload, dict) else None
+    if not isinstance(payload, dict) or payload.get("schemaVersion") != 1 or not isinstance(assignments, list):
+        return ["Pack assignment manifest must use schemaVersion 1 and contain packs"]
+    if len(assignments) != len(packs):
+        return [f"Assignment manifest has {len(assignments)} packs; resource has {len(packs)}"]
+
+    for pack, assignment in zip(packs, assignments):
+        label = str(pack.get("id", "unknown-pack"))
+        for field in ("id", "name", "subtitle", "systemImage", "order"):
+            if pack.get(field) != assignment.get(field):
+                errors.append(f"{label}: resource {field} does not match assignment manifest")
+        resource_words = [item.get("word") for item in pack.get("words", []) if isinstance(item, dict)]
+        if resource_words != assignment.get("words"):
+            errors.append(f"{label}: resource membership does not match assignment manifest")
+    return errors
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("path", nargs="?", type=Path, default=DEFAULT_PATH)
@@ -111,6 +144,8 @@ def main() -> int:
         print(f"ERROR: {error}")
         return 1
     errors, warnings, count = validate(packs)
+    if args.path.resolve() == DEFAULT_PATH.resolve():
+        errors.extend(validate_assignments(packs, DEFAULT_ASSIGNMENTS))
     print(f"Packs: {len(packs)}")
     print(f"Total words: {count}")
     print(f"Errors: {len(errors)}")

@@ -77,6 +77,7 @@ struct WordRepository: Sendable {
             id: pack.id,
             name: pack.name,
             subtitle: pack.subtitle,
+            systemImage: pack.systemImage,
             order: pack.order,
             words: words
         )

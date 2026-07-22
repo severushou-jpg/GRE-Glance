@@ -21,8 +21,8 @@ The complete upstream CSV is not committed. The app ships only the selected norm
 - Release: `2025-edition`, `english-wordnet-2025-json.zip`
 - Retrieved: 2026-07-19
 - License: underlying Princeton WordNet License plus Open English WordNet additions under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
-- Fields used: lemma/sense links, synset part of speech, members used as synonyms, and example sentences
-- Modifications: selected the sense nearest the upstream definition hint, removed duplicate/headword synonyms, limited synonyms to two or three, normalized punctuation, and used short original fallback context sentences where no suitable example existed
+- Fields used: lemma/sense links, synset part of speech, lexical sense domains, members used as synonyms, definitions used only as development-time classification context, and example sentences
+- Modifications: selected the sense nearest the upstream definition hint, removed duplicate/headword synonyms, limited synonyms to two or three, normalized punctuation, used short original fallback context sentences where no suitable example existed, and grouped the frozen headwords into task/topic packs without altering their licensed lexical fields
 
 Attribution is given to Princeton University WordNet and the Open English WordNet team as required by the upstream license.
 

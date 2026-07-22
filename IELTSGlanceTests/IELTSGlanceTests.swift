@@ -14,6 +14,25 @@ final class IELTSGlanceTests: XCTestCase {
             snapshot.packs.map(\.id),
             (1...15).map { String(format: "ielts-pack-%02d", $0) }
         )
+        XCTAssertEqual(snapshot.packs.map(\.name), [
+            "写作论证与证据",
+            "图表趋势与比较",
+            "因果变化与解决方案",
+            "描述评价与程度",
+            "沟通语言与媒体",
+            "教育研究与学习",
+            "工作商业与经济",
+            "社会政府与公共服务",
+            "环境自然与能源",
+            "科学技术与工程",
+            "健康身心与医疗",
+            "人物性格与关系",
+            "法律犯罪与冲突",
+            "城市住房与交通",
+            "生活文化与消费"
+        ])
+        XCTAssertTrue(snapshot.packs.allSatisfy { !$0.subtitle.isEmpty })
+        XCTAssertTrue(snapshot.packs.allSatisfy { !($0.systemImage ?? "").isEmpty })
         XCTAssertTrue(snapshot.words.allSatisfy { $0.id.hasPrefix("ielts-") })
         XCTAssertTrue(snapshot.words.allSatisfy {
             $0.source?.contains("IELTS Glance normalized") == true
