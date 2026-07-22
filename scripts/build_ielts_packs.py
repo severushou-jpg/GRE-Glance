@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SEED = ROOT / "data" / "ielts_words_seed.tsv"
 DEFAULT_OUTPUT = ROOT / "Shared" / "Resources" / "ielts_word_packs.json"
 DEFAULT_MANIFEST = ROOT / "data" / "ielts_curated_words.txt"
+DEFAULT_PACK_ASSIGNMENTS = ROOT / "data" / "ielts_pack_assignments.json"
 WORD_PATTERN = re.compile(r"^[a-z][a-z-]*$")
 POS_MAP = {"a": "adj.", "s": "adj.", "r": "adv.", "n": "n.", "v": "v."}
 
@@ -258,19 +259,49 @@ def build_words(
     return deduplicated[:1500]
 
 
-def make_packs(words: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    packs = []
-    for index in range(15):
-        start = index * 100
+def load_pack_assignments(path: Path) -> list[dict[str, Any]]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("schemaVersion") != 1 or not isinstance(payload.get("packs"), list):
+        raise ValueError("Pack assignment manifest must use schemaVersion 1 and contain packs")
+    return payload["packs"]
+
+
+def make_packs(
+    words: list[dict[str, Any]],
+    assignments: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if len(assignments) != 15:
+        raise ValueError(f"Pack assignment manifest must contain 15 packs, found {len(assignments)}")
+
+    words_by_headword = {str(item["word"]): item for item in words}
+    assigned_words: list[str] = []
+    packs: list[dict[str, Any]] = []
+
+    for index, assignment in enumerate(assignments, start=1):
+        expected_id = f"ielts-pack-{index:02d}"
+        headwords = assignment.get("words")
+        if assignment.get("id") != expected_id:
+            raise ValueError(f"Expected {expected_id}, found {assignment.get('id')}")
+        if not isinstance(headwords, list) or len(headwords) != 100:
+            raise ValueError(f"{expected_id} must contain exactly 100 assigned headwords")
+        missing = [word for word in headwords if word not in words_by_headword]
+        if missing:
+            raise ValueError(f"{expected_id} contains unavailable words: {', '.join(missing[:10])}")
+
+        assigned_words.extend(headwords)
         packs.append({
-            "id": f"ielts-pack-{index + 1:02d}",
-            "name": f"IELTS 进阶 {index + 1:02d}",
-            "subtitle": f"Words {start + 1}–{start + 100}",
-            "order": index + 1,
-            # Round-robin distribution keeps every pack balanced across the
-            # independently curated and corpus-ranked candidate bands.
-            "words": words[index::15],
+            "id": expected_id,
+            "name": str(assignment["name"]),
+            "subtitle": str(assignment["subtitle"]),
+            "systemImage": str(assignment["systemImage"]),
+            "order": index,
+            "words": [words_by_headword[word] for word in headwords],
         })
+
+    if len(assigned_words) != 1500 or len(set(assigned_words)) != 1500:
+        raise ValueError("Pack assignment manifest must contain 1,500 unique headwords")
+    if set(assigned_words) != set(words_by_headword):
+        raise ValueError("Pack assignment manifest and curated selection contain different headwords")
     return packs
 
 
@@ -281,6 +312,7 @@ def main() -> int:
     parser.add_argument("--seed", type=Path, default=DEFAULT_SEED)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--selection-manifest", type=Path, default=DEFAULT_MANIFEST)
+    parser.add_argument("--pack-assignments", type=Path, default=DEFAULT_PACK_ASSIGNMENTS)
     parser.add_argument("--signal", action="append", type=Path, default=[], help="Additional licensed headword-only curation signal")
     parser.add_argument("--refresh-selection", action="store_true", help="Re-rank candidates and replace the selection manifest")
     args = parser.parse_args()
@@ -316,7 +348,7 @@ def main() -> int:
             + "\n",
             encoding="utf-8",
         )
-    packs = make_packs(words)
+    packs = make_packs(words, load_pack_assignments(args.pack_assignments))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(packs, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     try:

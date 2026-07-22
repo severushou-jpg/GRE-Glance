@@ -9,9 +9,9 @@ IELTS Glance is a quiet, completely offline macOS app and desktop Widget for rep
 
 ## What is included
 
-- 1,500 locally bundled words split into exactly 15 balanced packs of 100
+- 1,500 locally bundled words split into exactly 15 task- and topic-based packs of 100
 - Any one pack or any combination of packs can define the random pool
-- Five distinct words in a native `.systemLarge` macOS Widget
+- Native `.systemSmall`, `.systemMedium`, and `.systemLarge` Widgets showing one, two, or five words
 - Per-word replacement and `Shuffle All` using App Intents
 - Independent text-size and pack selection for the Widget and app preview
 - Responsive synonym layout that yields space before shrinking the word or Chinese meaning
@@ -53,9 +53,9 @@ xcodebuild \
 1. Right-click an empty area of the desktop / 在桌面空白处右键。
 2. Choose **Edit Widgets** / 选择“编辑小组件”。
 3. Search for **IELTS Glance** / 搜索“IELTS Glance”。
-4. Select the large size and add it / 选择大号尺寸并添加。
+4. Select Small, Medium, or Large and add it / 选择小号、中号或大号并添加。
 
-Right-click the Widget and choose **Edit “IELTS Glance”** to select Comfortable, Large, Extra Large, or Follow App Setting. Pack selection is global and lives in the main app so every Widget uses the same intended study pool.
+Right-click the Widget and choose **Edit “IELTS Glance”** to select Comfortable, Large, Extra Large, or Follow App Setting, plus one or several study topics. The app preview and each Widget configuration select their own intended random pool.
 
 ## Vocabulary curation
 
@@ -65,7 +65,11 @@ The shipped dataset has **1,500 entries in 15 packs of 100**. It is a transparen
 2. Exclude entries carrying the `zk` or `gk` school-level tags.
 3. Keep a practical BNC/contemporary-corpus rank band of 3,000–40,000, excluding both very basic core words and extremely rare words.
 4. Require usable Open English WordNet lexical data, including a valid part of speech and at least two synonyms.
-5. Prefer words outside the CET-4 core, rank eligible words by corpus frequency, freeze the exact 1,500 headwords in `data/ielts_curated_words.txt`, and distribute ranking bands round-robin so every pack remains balanced.
+5. Prefer words outside the CET-4 core, rank eligible words by corpus frequency, and freeze the exact 1,500 headwords in `data/ielts_curated_words.txt`.
+6. Classify the frozen list into the language functions and recurring topics users most often need for IELTS: argument/evidence, Task 1 trends, cause/solution language, description, communication, education, work/economy, society/government, environment, science/technology, health, people/relationships, law/conflict, cities/transport, and life/culture/consumption.
+7. Preserve the reviewed 15×100 membership in `data/ielts_pack_assignments.json`. Cross-topic words receive one best-fit home so selecting multiple packs never creates duplicates.
+
+The first three functional packs reflect the language demanded by IELTS Academic Writing: Task 1 requires describing and comparing visual data or processes, while Task 2 requires a relevant argument supported with evidence or examples. The remaining packs cover broad academic and familiar social topics rather than copying official test questions. See the [official IELTS Academic Writing format](https://ielts.org/take-a-test/test-types/ielts-academic-test/ielts-academic-format-writing).
 
 This method intentionally avoids IELTS test materials, Oxford, Cambridge Dictionary, Longman, Merriam-Webster, and commercial preparation-company datasets. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) for exact versions, fields, modifications, and licenses.
 
@@ -75,17 +79,18 @@ The primary resource is `Shared/Resources/ielts_word_packs.json`:
 [
   {
     "id": "ielts-pack-01",
-    "name": "IELTS 进阶 01",
-    "subtitle": "Words 1–100",
+    "name": "写作论证与证据",
+    "subtitle": "观点、证据、评价与逻辑",
+    "systemImage": "text.quote",
     "order": 1,
     "words": [
       {
-        "id": "ielts-volatile",
-        "word": "volatile",
-        "partOfSpeech": "adj.",
-        "chineseMeaning": "易变的；不稳定的",
-        "synonyms": ["unstable", "explosive", "changeable"],
-        "exampleSentence": "Prices remained volatile after the unexpected announcement.",
+        "id": "ielts-hypothesis",
+        "word": "hypothesis",
+        "partOfSpeech": "n.",
+        "chineseMeaning": "假设",
+        "synonyms": ["possibility", "theory"],
+        "exampleSentence": "A scientific hypothesis that survives experimental testing becomes a scientific theory.",
         "source": "ECDICT + Open English WordNet 2025; IELTS Glance normalized"
       }
     ]
@@ -103,7 +108,7 @@ python3 scripts/build_ielts_packs.py \
 python3 scripts/validate_words.py
 ```
 
-The committed selection manifest makes subsequent builds use the same 1,500 headwords. Pass `--refresh-selection` only for an intentional, reviewed vocabulary release. Python is a development tool only; the App and Widget never invoke it.
+The committed selection and topic-assignment manifests make subsequent builds use the same 1,500 headwords and the same 100 words per topic. `scripts/classify_ielts_packs.swift` is a development-only aid that combines curated IELTS task/topic seeds, Open English WordNet sense domains, and the offline macOS English word embedding; the committed assignment manifest—not a runtime classifier—is authoritative. Pass `--refresh-selection` only for an intentional, reviewed vocabulary release. Python and the classifier are development tools only; the App and Widget never invoke them.
 
 ## Data and code licenses
 

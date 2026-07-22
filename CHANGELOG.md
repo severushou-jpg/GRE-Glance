@@ -2,6 +2,13 @@
 
 All notable changes to IELTS Glance are documented here.
 
+## 2.1.0 — 2026-07-22
+
+- Add native Small, Medium, and Large Widget layouts showing one, two, or five words.
+- Preserve the same stable five-word technical state behind every size so per-word replacement remains revision-safe.
+- Replace numbered packs with 15 IELTS task- and topic-based packs of exactly 100 words.
+- Add stable topic-assignment data, a development-only classifier, stricter validation, and topic-aware App and Widget configuration labels.
+
 ## 2.0.2 — 2026-07-19
 
 - Remove the unusable mixed-case App Group entitlement after confirming the macOS sandbox denied the Widget access under a Personal Team profile.

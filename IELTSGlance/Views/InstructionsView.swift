@@ -5,7 +5,7 @@ struct InstructionsView: View {
         "在桌面空白处右键 / Right-click the desktop",
         "选择“编辑小组件” / Choose Edit Widgets",
         "搜索“IELTS Glance” / Search for IELTS Glance",
-        "选择大号尺寸并添加 / Add the large size"
+        "选择小号、中号或大号 / Choose Small, Medium, or Large"
     ]
 
     var body: some View {

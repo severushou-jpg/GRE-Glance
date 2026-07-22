@@ -3,7 +3,7 @@ import SwiftUI
 struct PackSelectionView: View {
     let store: AppWordStore
 
-    private let columns = [GridItem(.adaptive(minimum: 132, maximum: 180), spacing: 8)]
+    private let columns = [GridItem(.adaptive(minimum: 240, maximum: 310), spacing: 8)]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -11,7 +11,7 @@ struct PackSelectionView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("选择词包")
                         .font(.headline)
-                    Text("随机刷新只会从已选择的词包中抽取。")
+                    Text("按备考任务和高频话题选择；随机刷新只从已选主题抽取。")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -54,14 +54,22 @@ private struct PackButton: View {
             HStack(spacing: 8) {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-                VStack(alignment: .leading, spacing: 1) {
+                Image(systemName: pack.iconName)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
                     Text(pack.name)
                         .font(.callout.weight(.medium))
-                    Text(pack.wordRangeDescription)
-                        .font(.caption2.monospacedDigit())
+                    Text(pack.subtitle)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
                 Spacer(minLength: 0)
+                Text(pack.wordCountDescription)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.tertiary)
             }
             .contentShape(Rectangle())
         }
@@ -74,7 +82,7 @@ private struct PackButton: View {
         }
         .disabled(isSelected && !canDeselect)
         .help("点按切换；右键可仅选择此包")
-        .accessibilityLabel("\(pack.name)，\(isSelected ? "已选择" : "未选择")，100 个词")
+        .accessibilityLabel("\(pack.name)，\(pack.subtitle)，\(isSelected ? "已选择" : "未选择")，\(pack.words.count) 个词")
         .contextMenu {
             Button("仅选择此词包", action: onSelectOnly)
         }
