@@ -4,7 +4,10 @@ set -euo pipefail
 MODE="${1:-run}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_ROOT="$ROOT_DIR/.build"
-DERIVED_DATA="$BUILD_ROOT/DerivedData"
+# Widget extensions launched by ExtensionKit must live outside privacy-protected
+# Desktop/Documents build folders. Use Xcode's standard per-user DerivedData
+# location so macOS can validate and launch the signed extension reliably.
+DERIVED_DATA="${IELTSGLANCE_DERIVED_DATA:-$HOME/Library/Developer/Xcode/DerivedData/IELTSGlance-Codex}"
 BUILD_LOG="$BUILD_ROOT/last-build.log"
 
 mkdir -p "$BUILD_ROOT"
@@ -69,7 +72,8 @@ BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$INFO_PLIST
 APP_BINARY="$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME"
 
 register_current_widget_extension() {
-  local widget_bundle widget_info widget_id widget_executable registered_plugin registered_app
+  local widget_bundle widget_info widget_id widget_executable widget_debug_dylib
+  local registered_plugin registered_app registered_info registered_id registered_widget service
   local registered_paths registration_count lsregister
 
   widget_bundle="$(find "$APP_BUNDLE/Contents/PlugIns" -maxdepth 1 -type d -name '*.appex' -print -quit 2>/dev/null || true)"
@@ -78,7 +82,21 @@ register_current_widget_extension() {
   widget_info="$widget_bundle/Contents/Info.plist"
   widget_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$widget_info")"
   widget_executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$widget_info")"
+  widget_debug_dylib="$widget_bundle/Contents/MacOS/${widget_executable}.debug.dylib"
   lsregister="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+
+  if ! /usr/bin/codesign -d --entitlements - --xml "$widget_bundle" 2>&1 | \
+      /usr/bin/grep -q '<key>com.apple.security.app-sandbox</key>'; then
+    echo "error: Widget extension is missing the App Sandbox entitlement" >&2
+    exit 1
+  fi
+
+  # Xcode's debug-dylib mode strips entitlements from the binary that
+  # ExtensionKit actually launches, so interactive Widget intents silently fail.
+  if [[ -e "$widget_debug_dylib" ]]; then
+    echo "error: Widget Debug dylib is enabled; set ENABLE_DEBUG_DYLIB=NO for the Widget Debug configuration" >&2
+    exit 1
+  fi
 
   # Xcode and ad-hoc validation builds can leave several extensions with the
   # same bundle identifier registered. WidgetKit may otherwise keep launching
@@ -91,8 +109,39 @@ register_current_widget_extension() {
     "$lsregister" -u "$registered_app" >/dev/null 2>&1 || true
   done < <(/usr/bin/pluginkit -m -A -D -v -i "$widget_id" 2>/dev/null | /usr/bin/awk -F '\t' 'NF > 1 { print $NF }')
 
+  # LaunchServices can retain an unsigned test-host copy even when pluginkit no
+  # longer lists its extension. Remove other DerivedData copies of this app so
+  # App Intents cannot be routed to a stale or unsigned binary.
+  while IFS= read -r -d '' registered_app; do
+    [[ "$registered_app" == "$APP_BUNDLE" ]] && continue
+    registered_info="$registered_app/Contents/Info.plist"
+    [[ -f "$registered_info" ]] || continue
+    registered_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$registered_info" 2>/dev/null || true)"
+    [[ "$registered_id" == "$BUNDLE_ID" ]] || continue
+    registered_widget="$(find "$registered_app/Contents/PlugIns" -maxdepth 1 -type d -name '*.appex' -print -quit 2>/dev/null || true)"
+    [[ -z "$registered_widget" ]] || /usr/bin/pluginkit -r "$registered_widget" >/dev/null 2>&1 || true
+    "$lsregister" -u "$registered_app" >/dev/null 2>&1 || true
+  done < <(find "$HOME/Library/Developer/Xcode/DerivedData" "$BUILD_ROOT" \
+    -type d -name '*.app' -path '*/Build/Products/*' -print0 -prune 2>/dev/null)
+
   /usr/bin/pkill -f "/Contents/PlugIns/.*/Contents/MacOS/$widget_executable" >/dev/null 2>&1 || true
   /usr/bin/pkill -f "/Contents/PlugIns/.*/Contents/MacOS/GREGlanceWidgetExtension" >/dev/null 2>&1 || true
+
+  # Refresh user-level discovery caches before registering the current build.
+  # These services restart automatically; no system settings are changed.
+  for service in linkd extensionkitservice chronod; do
+    /usr/bin/killall "$service" >/dev/null 2>&1 || true
+  done
+  for _ in {1..20}; do
+    pgrep -x linkd >/dev/null && pgrep -x chronod >/dev/null && break
+    sleep 0.25
+  done
+
+  # Re-register even when the bundle path is unchanged. ExtensionKit caches
+  # signing metadata by bundle identifier and can otherwise retain a stale
+  # record that incorrectly reports the sandbox entitlement as missing.
+  /usr/bin/pluginkit -r "$widget_bundle" >/dev/null 2>&1 || true
+  "$lsregister" -u "$APP_BUNDLE" >/dev/null 2>&1 || true
   "$lsregister" -f -R -trusted "$APP_BUNDLE" >/dev/null
   /usr/bin/pluginkit -a "$widget_bundle"
   /usr/bin/pluginkit -e use -i "$widget_id"
